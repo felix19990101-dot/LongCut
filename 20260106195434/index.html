@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 视频分析工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh;
+            padding: 20px;
+            color: #1d1d1f;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: #1d1d1f;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #6e6e73;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            margin-bottom: 30px;
+        }
+
+        .search-box h2 {
+            margin-bottom: 20px;
+            color: #1d1d1f;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 16px 20px;
+            border: 1px solid #d2d2d7;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            background: #f5f5f7;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #0071e3;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+        }
+
+        .btn-analyze {
+            background: #0071e3;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-analyze:hover:not(:disabled) {
+            background: #0077ed;
+            transform: scale(1.02);
+        }
+
+        .btn-analyze:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .btn-analyze:disabled {
+            background: #8e8e93;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 18px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e5ea;
+            border-top-color: #0071e3;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            background: white;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            margin-bottom: 30px;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results h2 {
+            color: #1d1d1f;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            border-bottom: 1px solid #e5e5ea;
+            padding-bottom: 15px;
+        }
+
+        .video-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .video-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .video-player {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .video-player iframe {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border: none;
+        }
+
+        .highlights-section {
+            background: #f5f5f7;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .highlights-section h3 {
+            color: #1d1d1f;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .highlight-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            border-left: 4px solid #0071e3;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .highlight-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .highlight-time {
+            font-weight: 600;
+            color: #0071e3;
+            font-size: 1rem;
+            min-width: 60px;
+        }
+
+        .highlight-desc {
+            color: #1d1d1f;
+            font-size: 0.95rem;
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .highlight-type {
+            background: #f5f5f7;
+            color: #6e6e73;
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        /* 不同类型用不同颜色 */
+        .highlight-item[data-type="逻辑转折点"] { border-left-color: #ff3b30; }
+        .highlight-item[data-type="核心定义点"] { border-left-color: #007aff; }
+        .highlight-item[data-type="解决方案点"] { border-left-color: #34c759; }
+        .highlight-item[data-type="避坑指南"] { border-left-color: #ff9500; }
+
+        .highlight-item[data-type="逻辑转折点"] .highlight-type { background: #fff5f5; color: #ff3b30; }
+        .highlight-item[data-type="核心定义点"] .highlight-type { background: #f0f8ff; color: #007aff; }
+        .highlight-item[data-type="解决方案点"] .highlight-type { background: #f5fff9a; color: #34c759; }
+        .highlight-item[data-type="避坑指南"] .highlight-type { background: #fff5f0; color: #ff9500; }
+
+        .error-message {
+            display: none;
+            background: #fff5f5;
+            color: #ff3b30;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 15px;
+            border-left: 4px solid #ff3b30;
+            font-weight: 500;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .status-text {
+            color: #6e6e73;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .gemini-key-section {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f0f8ff;
+            border-radius: 12px;
+            border-left: 4px solid #007aff;
+        }
+
+        .gemini-key-section h3 {
+            color: #007aff;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .gemini-key-section input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d2d2d7;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .gemini-key-section input:focus {
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+        }
+
+        .role-section {
+            margin-top: 20px;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: 12px;
+            border-left: 4px solid #6e6e73;
+        }
+
+        .role-section h3 {
+            color: #1d1d1f;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .role-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d2d2d7;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: white;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .role-select:focus {
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 YouTube 视频关键亮点工具</h1>
+            <p>智能提取字幕，自动生成关键时间节点，一键跳转</p>
+        </div>
+
+        <div class="search-box">
+            <h2>输入 YouTube 视频链接</h2>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="videoUrl"
+                    placeholder="例如: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    value="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                >
+                <button class="btn-analyze" id="analyzeBtn" onclick="analyzeVideo()">
+                    开始分析
+                </button>
+            </div>
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="gemini-key-section">
+                <h3>🔑 Gemini API Key (可选)</h3>
+                <input
+                    type="text"
+                    id="geminiKey"
+                    placeholder="输入您的 Gemini API Key 以启用 AI 分析"
+                >
+                <p style="font-size: 0.85rem; color: #6e6e73; margin-top: 8px;">
+                    如果不提供，将使用规则引擎生成亮点
+                </p>
+            </div>
+
+            <div class="role-section">
+                <h3>👤 选择您的身份</h3>
+                <select id="userRole" class="role-select">
+                    <option value="pm">项目经理</option>
+                    <option value="ai_student">AI 学生</option>
+                    <option value="developer">开发者</option>
+                    <option value="designer">设计师</option>
+                    <option value="business">商业分析师</option>
+                    <option value="general">普通观众</option>
+                </select>
+                <p style="font-size: 0.85rem; color: #6e6e73; margin-top: 8px;">
+                    不同身份会生成不同类型的关键亮点
+                </p>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p class="status-text" id="statusText">正在获取视频字幕...</p>
+        </div>
+
+        <div class="results" id="results">
+            <h2>⏱️ 关键亮点</h2>
+
+            <div class="video-section">
+                <div class="video-player">
+                    <div id="player"></div>
+                    <div id="playButton" style="display: none; text-align: center; padding: 40px;">
+                        <button onclick="manuallyPlayVideo()" style="padding: 15px 30px; font-size: 16px; cursor: pointer; background: #0071e3; color: white; border: none; border-radius: 12px;">
+                            ▶️ 点击播放视频
+                        </button>
+                    </div>
+                </div>
+
+                <div class="highlights-section">
+                    <h3>⏱️ 关键亮点 (点击跳转)</h3>
+                    <div id="highlightsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
